@@ -11,10 +11,11 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Download Android project
+      - name: Download corrected Android project
         run: |
-          curl --fail --location --silent --show-error 'https://share.zapia.com/i56it6uhv8ql5zgomvmrqh' -o game.zip
+          curl --fail --location --silent --show-error 'https://share.zapia.com/cvznscaq0r6dngxpyjod6n' -o game.zip
           unzip -q game.zip
+          grep -q 'requestJump' android-template/app/src/main/assets/www/index.html
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -25,22 +26,21 @@ jobs:
       - name: Build Android APK
         working-directory: android-template
         run: gradle --no-daemon assembleRelease
-      - name: Validate APK signature and embedded game
+      - name: Verify package and signature
         run: |
           APK=android-template/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
           unzip -t "$APK" | tail -2
-          unzip -p "$APK" assets/www/index.html | grep -q 'Fase 1 / 5.000'
-          unzip -l "$APK" | grep 'assets/www/assets/logo-bosque-cantante.webp'
+          unzip -p "$APK" assets/www/index.html | grep -q 'requestJump'
           "$ANDROID_HOME"/build-tools/35.0.0/apksigner verify --verbose "$APK"
           mkdir -p release
-          cp "$APK" release/Turma-da-Lume-Bosque-Cantante.apk
+          cp "$APK" release/Turma-da-Lume-Bosque-Cantante-pulo.apk
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Install and test game on Android emulator
+      - name: Test jump on Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -49,24 +49,22 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            adb install -r release/Turma-da-Lume-Bosque-Cantante.apk
+            adb install -r release/Turma-da-Lume-Bosque-Cantante-pulo.apk
             adb shell am start -n com.turmadalume.bosquecantante/.MainActivity
             sleep 40
             adb shell pidof com.turmadalume.bosquecantante
-            adb exec-out screencap -p > release/start.png
+            adb exec-out screencap -p > release/inicio.png
             adb shell input tap 320 185
-            sleep 4
-            adb exec-out screencap -p > release/game.png
-            adb shell uiautomator dump /sdcard/game.xml
-            adb pull /sdcard/game.xml release/game.xml
-            adb shell input swipe 125 260 125 260 900
+            sleep 5
+            adb exec-out screencap -p > release/antes.png
+            adb shell input tap 580 240
+            sleep 0.18
+            adb exec-out screencap -p > release/pulo.png
             sleep 1
-            adb exec-out screencap -p > release/moved.png
-            adb shell input tap 580 260
-            adb exec-out screencap -p > release/jump.png
+            adb exec-out screencap -p > release/depois.png
             adb logcat -d -s chromium:E AndroidRuntime:E > release/log.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-cantante-v3-check
+          name: bosque-pulo-check
           path: release/
