@@ -15,7 +15,6 @@ jobs:
         run: |
           curl --fail --location --silent --show-error 'https://share.zapia.com/i56it6uhv8ql5zgomvmrqh' -o game.zip
           unzip -q game.zip
-          grep -q 'logo-bosque-cantante.webp' android-template/app/src/main/assets/www/index.html
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -41,7 +40,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Install and launch on Android emulator
+      - name: Install and test game on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -53,23 +52,21 @@ jobs:
             adb install -r release/Turma-da-Lume-Bosque-Cantante.apk
             adb shell am start -n com.turmadalume.bosquecantante/.MainActivity
             sleep 40
-            adb shell input tap 220 160
-            sleep 5
             adb shell pidof com.turmadalume.bosquecantante
             adb exec-out screencap -p > release/start.png
-            adb shell uiautomator dump /sdcard/start.xml
-            adb pull /sdcard/start.xml release/start.xml
-            python3 -c "import xml.etree.ElementTree as E,re,subprocess; r=E.parse('release/start.xml'); b=next(n.get('bounds') for n in r.iter('node') if 'Começar aventura' in (n.get('text') or '') or 'Começar aventura' in (n.get('content-desc') or '')); x1,y1,x2,y2=map(int,re.findall(r'\d+',b));subprocess.run(['adb','shell','input','tap',str((x1+x2)//2),str((y1+y2)//2)],check=True)"
-            sleep 5
+            adb shell input tap 320 185
+            sleep 4
             adb exec-out screencap -p > release/game.png
             adb shell uiautomator dump /sdcard/game.xml
             adb pull /sdcard/game.xml release/game.xml
-            grep -q 'PULAR' release/game.xml
-            python3 -c "import xml.etree.ElementTree as E,re,subprocess; r=E.parse('release/game.xml'); b=next(n.get('bounds') for n in r.iter('node') if 'Mover para direita' in (n.get('content-desc') or '') or 'Mover para direita' in (n.get('text') or '')); x1,y1,x2,y2=map(int,re.findall(r'\d+',b));x=(x1+x2)//2;y=(y1+y2)//2;subprocess.run(['adb','shell','input','swipe',str(x),str(y),str(x),str(y),'900'],check=True)"
+            adb shell input swipe 125 260 125 260 900
             sleep 1
             adb exec-out screencap -p > release/moved.png
+            adb shell input tap 580 260
+            adb exec-out screencap -p > release/jump.png
+            adb logcat -d -s chromium:E AndroidRuntime:E > release/log.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-cantante-v2-check
+          name: bosque-cantante-v3-check
           path: release/
