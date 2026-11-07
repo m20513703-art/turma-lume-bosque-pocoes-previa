@@ -35,8 +35,8 @@ jobs:
             adb shell input tap 510 190
             sleep 3
             adb exec-out screencap -p > release/menu.png
-            adb shell input tap 320 205
-            sleep 3
+            adb shell input tap 320 227
+            sleep 4
             adb exec-out screencap -p > release/antes.png
             adb shell input tap 560 270
             sleep 0.16
@@ -49,5 +49,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-exact-apk-test
+          name: bosque-exact-apk-test-v2
           path: release/
