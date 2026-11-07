@@ -1,4 +1,4 @@
-name: Build Bosque Cantante Android
+name: Build and test Bosque Cantante
 on:
   workflow_dispatch:
   push:
@@ -11,11 +11,11 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Download corrected Android project
+      - name: Download revised Android project
         run: |
-          curl --fail --location --silent --show-error 'https://share.zapia.com/cvznscaq0r6dngxpyjod6n' -o game.zip
+          curl --fail --location --silent --show-error 'https://share.zapia.com/1hobdlr2muoau8263vqwn3' -o game.zip
           unzip -q game.zip
-          grep -q 'requestJump' android-template/app/src/main/assets/www/index.html
+          grep -q 'IMMERSIVE_STICKY' android-template/app/src/main/java/com/turmadalume/bosquecantante/MainActivity.java
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -34,13 +34,13 @@ jobs:
           unzip -p "$APK" assets/www/index.html | grep -q 'requestJump'
           "$ANDROID_HOME"/build-tools/35.0.0/apksigner verify --verbose "$APK"
           mkdir -p release
-          cp "$APK" release/Turma-da-Lume-Bosque-Cantante-pulo.apk
+          cp "$APK" release/Turma-da-Lume-Bosque-Cantante-controles.apk
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Test jump on Android
+      - name: Verify landscape controls and jump on Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -49,22 +49,24 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            adb install -r release/Turma-da-Lume-Bosque-Cantante-pulo.apk
+            adb install -r release/Turma-da-Lume-Bosque-Cantante-controles.apk
             adb shell am start -n com.turmadalume.bosquecantante/.MainActivity
-            sleep 40
+            sleep 35
             adb shell pidof com.turmadalume.bosquecantante
             adb exec-out screencap -p > release/inicio.png
-            adb shell input tap 320 185
-            sleep 5
-            adb exec-out screencap -p > release/antes.png
-            adb shell input tap 580 240
+            adb shell input tap 320 190
+            sleep 3
+            adb exec-out screencap -p > release/tela.png
+            adb shell input tap 560 270
             sleep 0.18
             adb exec-out screencap -p > release/pulo.png
             sleep 1
-            adb exec-out screencap -p > release/depois.png
+            adb shell input swipe 125 270 125 270 700
+            sleep 1
+            adb exec-out screencap -p > release/movimento.png
             adb logcat -d -s chromium:E AndroidRuntime:E > release/log.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-pulo-check
+          name: bosque-controles-check-v4
           path: release/
