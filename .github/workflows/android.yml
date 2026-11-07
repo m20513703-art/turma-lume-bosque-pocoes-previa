@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download Android project
         run: |
-          curl --fail --location --silent --show-error 'https://share.zapia.com/9eg5mjo2w7ff09a4693yx2' -o game.zip
+          curl --fail --location --silent --show-error 'https://share.zapia.com/5w1ky6kbzm9gqfq7dlfahg' -o game.zip
           unzip -q game.zip
       - uses: actions/setup-node@v4
         with:
@@ -75,5 +75,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-pocoes-setas-v9
+          name: bosque-pocoes-setas-v10
           path: release/
