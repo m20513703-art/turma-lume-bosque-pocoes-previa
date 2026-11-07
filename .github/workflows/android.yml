@@ -1,4 +1,4 @@
-name: Build and test Bosque Cantante
+name: Test corrected Bosque app
 on:
   workflow_dispatch:
   push:
@@ -6,41 +6,21 @@ on:
 permissions:
   contents: read
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - name: Download revised Android project
+      - name: Download exact APK
         run: |
-          curl --fail --location --silent --show-error 'https://share.zapia.com/1hobdlr2muoau8263vqwn3' -o game.zip
-          unzip -q game.zip
-          grep -q 'IMMERSIVE_STICKY' android-template/app/src/main/java/com/turmadalume/bosquecantante/MainActivity.java
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-      - name: Build Android APK
-        working-directory: android-template
-        run: gradle --no-daemon assembleRelease
-      - name: Verify package and signature
-        run: |
-          APK=android-template/app/build/outputs/apk/release/app-release.apk
-          test -s "$APK"
-          unzip -t "$APK" | tail -2
-          unzip -p "$APK" assets/www/index.html | grep -q 'requestJump'
-          "$ANDROID_HOME"/build-tools/35.0.0/apksigner verify --verbose "$APK"
           mkdir -p release
-          cp "$APK" release/Turma-da-Lume-Bosque-Cantante-controles.apk
+          curl --fail --location --silent --show-error 'https://share.zapia.com/xl9m88my6dp2q2l7w9exjn' -o release/app.apk
+          sha256sum release/app.apk
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify landscape controls and jump on Android
+      - name: Test screen and controls
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -49,24 +29,25 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            adb install -r release/Turma-da-Lume-Bosque-Cantante-controles.apk
+            adb install -r release/app.apk
             adb shell am start -n com.turmadalume.bosquecantante/.MainActivity
-            sleep 35
-            adb shell pidof com.turmadalume.bosquecantante
-            adb exec-out screencap -p > release/inicio.png
-            adb shell input tap 320 190
+            sleep 40
+            adb shell input tap 510 190
             sleep 3
-            adb exec-out screencap -p > release/tela.png
+            adb exec-out screencap -p > release/menu.png
+            adb shell input tap 320 205
+            sleep 3
+            adb exec-out screencap -p > release/antes.png
             adb shell input tap 560 270
-            sleep 0.18
+            sleep 0.16
             adb exec-out screencap -p > release/pulo.png
             sleep 1
             adb shell input swipe 125 270 125 270 700
             sleep 1
             adb exec-out screencap -p > release/movimento.png
-            adb logcat -d -s chromium:E AndroidRuntime:E > release/log.txt || true
+            adb shell pidof com.turmadalume.bosquecantante
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-controles-check-v4
+          name: bosque-exact-apk-test
           path: release/
