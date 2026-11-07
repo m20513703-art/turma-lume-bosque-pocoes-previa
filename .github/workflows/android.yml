@@ -11,11 +11,16 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Download corrected Android project
+      - name: Download Android project
         run: |
-          curl --fail --location --silent --show-error 'https://share.zapia.com/2thk7chj2qb5wxezmp89rl' -o game.zip
+          curl --fail --location --silent --show-error 'https://share.zapia.com/9eg5mjo2w7ff09a4693yx2' -o game.zip
           unzip -q game.zip
-          grep -q '462\*(1-ys)' android-template/app/src/main/assets/www/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test four potion effects
+        working-directory: android-template
+        run: node test-pocoes.cjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -31,16 +36,16 @@ jobs:
           APK=android-template/app/build/outputs/apk/release/app-release.apk
           test -s "$APK"
           unzip -t "$APK" | tail -2
-          unzip -p "$APK" assets/www/index.html | grep -q 'requestJump'
+          unzip -p "$APK" assets/www/index.html | grep -q 'Barreira de Folhas'
           "$ANDROID_HOME"/build-tools/35.0.0/apksigner verify --verbose "$APK"
           mkdir -p release
-          cp "$APK" release/Turma-da-Lume-Bosque-Cantante-controles-v5.apk
+          cp "$APK" release/Turma-da-Lume-Bosque-Cantante-pocoes.apk
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify game and controls on Android
+      - name: Verify gameplay and large arrows on Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -49,7 +54,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            adb install -r release/Turma-da-Lume-Bosque-Cantante-controles-v5.apk
+            adb install -r release/Turma-da-Lume-Bosque-Cantante-pocoes.apk
             adb shell am start -n com.turmadalume.bosquecantante/.MainActivity
             sleep 40
             adb shell input tap 510 190
@@ -57,12 +62,12 @@ jobs:
             adb exec-out screencap -p > release/menu.png
             adb shell input tap 320 227
             sleep 4
-            adb exec-out screencap -p > release/antes.png
+            adb exec-out screencap -p > release/tela.png
             adb shell input tap 560 270
-            sleep 0.15
+            sleep 0.18
             adb exec-out screencap -p > release/pulo.png
             sleep 1
-            adb shell input swipe 125 270 125 270 700
+            adb shell input swipe 150 270 150 270 700
             sleep 1
             adb exec-out screencap -p > release/movimento.png
             adb shell pidof com.turmadalume.bosquecantante
@@ -70,5 +75,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: bosque-controles-check-v5
+          name: bosque-pocoes-setas-v9
           path: release/
